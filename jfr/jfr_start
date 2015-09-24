@@ -1,0 +1,4 @@
+#!/bin/bash
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+DAEMON_PID=`pgrep -f GradleDaemon`
+jcmd $DAEMON_PID JFR.start name=GradleDaemon_$DAEMON_PID settings=$DIR/profiling.jfc maxsize=1G

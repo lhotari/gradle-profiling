@@ -1,0 +1,9 @@
+#!/bin/bash
+DAEMON_PID=`pgrep -f GradleDaemon`
+FILENAME="$PWD/GradleDaemon_${DAEMON_PID}_$(date +%F-%T).jfr"
+jcmd $DAEMON_PID JFR.stop name=GradleDaemon_$DAEMON_PID filename=$FILENAME
+if [[ "$1" == "open" ]]; then
+    jmc -open "$FILENAME" &
+else
+    echo "command to open: jmc -open '$FILENAME'"
+fi
