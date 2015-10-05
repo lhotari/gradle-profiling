@@ -1,5 +1,6 @@
 import groovy.text.*
 import groovy.text.markup.*
+import groovy.util.XmlSlurper
 
 // add configuration for btrace (https://github.com/jbachorik/btrace)
 // usage:
@@ -60,20 +61,69 @@ task generateProfilerProbeXml << {
                 probes << line
             }
         }
-        TemplateConfiguration config = new TemplateConfiguration()
-        config.autoIndent = true
-        config.autoNewLine = true
-        config.declarationEncoding = 'UTF-8'
-        MarkupTemplateEngine engine = new MarkupTemplateEngine(config)  
-        Template xmltemplate = engine.createTemplate('''
+        Template xmltemplate = createProfilerProbesTemplate()
+        new File('btrace-probes/profiler-probes.xml').withWriter('UTF-8') { writer ->
+            xmltemplate.make([probes: probes]).writeTo(writer)
+        }
+    }
+}
+
+task generateProfilerProbeXmlFromIdea << {
+    def probes = readProbesFromIdea(new File(getProperty("ideaWorkspaceFile")))
+    if (probes) {
+        Template xmltemplate = createProfilerProbesTemplate()
+        new File('btrace-probes/profiler-probes.xml').withWriter('UTF-8') { writer ->
+            xmltemplate.make([probes: probes]).writeTo(writer)
+        }
+    }
+}
+
+task importProfilerProbesFromIdeaToProbesTxt << {
+    def probes = readProbesFromIdea(new File(getProperty("ideaWorkspaceFile")))
+    if (probes) {
+        new File('btrace-probes/profiler-probes.txt').withWriterAppend('UTF-8') { writer ->
+            probes.each { row ->
+                writer << row.classname << '.' << row.methodname << '\n'
+            }
+        }
+    }
+}
+
+private List<Map> readProbesFromIdea(File ideaWorkspaceFile) {
+    if (ideaWorkspaceFile.exists()) {
+        def rootNode = new XmlSlurper().parse(ideaWorkspaceFile)
+        def probes = rootNode.'**'.findAll { node -> node.name() == 'line-breakpoint' && node.@type == 'java-method' }.collect { node ->
+            def props = node.children().find { it.name() == 'properties' }
+            [classname: props.@class, methodname: props.@method]
+        }
+        return probes
+    } else {
+        return []
+    }
+}
+
+private Template createProfilerProbesTemplate() {
+    TemplateConfiguration config = new TemplateConfiguration()
+    config.autoIndent = true
+    config.autoNewLine = true
+    config.declarationEncoding = 'UTF-8'
+    MarkupTemplateEngine engine = new MarkupTemplateEngine(config)
+    Template xmltemplate = engine.createTemplate('''
  xmlDeclaration()
  "btrace-probes"(namespace:"profiler-probes") {
-    ["profiler-entry","profiler-exit"].each { phase -> 
+    ["profiler-entry","profiler-exit"].each { phase ->
         probe(name:phase) {
             for(probeentry in probes) {
-                def matcher = (probeentry =~ /^([^\\/]+)\\.(.+)$/)[0]
-                def classname = matcher[1]
-                def methodname = matcher[2]
+                def classname
+                def methodname
+                if(probeentry instanceof Map) {
+                    classname = probeentry.classname
+                    methodname = probeentry.methodname
+                } else {
+                    def matcher = (probeentry =~ /^([^\\/]+)\\.(.+)$/)[0]
+                    classname = matcher[1]
+                    methodname = matcher[2]
+                }
                 map {
                     clazz(classname)
                     method(methodname)
@@ -88,10 +138,7 @@ task generateProfilerProbeXml << {
     }
 }
             ''')
-        new File('btrace-probes/profiler-probes.xml').withWriter('UTF-8') { writer ->
-            xmltemplate.make([probes: probes]).writeTo(writer)
-        }  
-    }
+    xmltemplate
 }
 
 // reads debugging breakpoints exported from Eclipse
@@ -185,14 +232,8 @@ def createBtraceAgentJvmArgs() {
 }
 
 task printBtraceAgentJvmArgs << {
+    dependsOn(btraceInstall)
     println createBtraceAgentJvmArgs().join(" ")
-}
-
-if(plugins.hasPlugin("application")) {
-    run {
-        dependsOn(btraceInstall, generateProfilerProbeXml, generateLegstopwatchProbeXml)
-        jvmArgs += createBtraceAgentJvmArgs()
-    }
 }
 
 if(plugins.hasPlugin("eclipse")) {
