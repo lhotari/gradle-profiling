@@ -1,1 +1,3 @@
+org.gradle.api.internal.file.collections.DirectoryFileTree.visit
 org.gradle.api.internal.tasks.DefaultTaskInputs.getFiles
+org.gradle.api.internal.tasks.DefaultTaskOutputs.getFiles
