@@ -55,11 +55,13 @@ task btraceCompile(type: JavaExec, dependsOn: btraceClasses) {
     }
     classpath = configurations.btraceCompiler
     main = 'com.sun.btrace.compiler.Compiler'
+    ignoreExitValue = false
     def compileClasspath = configurations.compile.files
     if (compileClasspath) {
         args '-cp', compileClasspath.join(':')
     }
     args '-d', outputDir
+    args '-unsafe'
     args compileBtraceJava.inputs.sourceFiles
 }
 
