@@ -1,9 +1,4 @@
-import static com.sun.btrace.BTraceUtils.*;
-
-import java.util.Deque;
-
 import com.sun.btrace.BTraceUtils;
-import com.sun.btrace.BTraceUtils.Strings;
 import com.sun.btrace.Profiler;
 import com.sun.btrace.annotations.*;
 
@@ -12,22 +7,14 @@ public class SimpleProfiler {
     @Property(name = "profiler")
     public static Profiler profiler = BTraceUtils.Profiling.newProfiler();
 
-    @TLS
-    public static Deque<Long> entryTimes = BTraceUtils.Collections.newDeque();
-
     @OnProbe(namespace = "profiler-probes", name = "profiler-entry")
-    public static void entry() {
-        BTraceUtils.Collections.push(entryTimes, box(timeMillis()));
-        BTraceUtils.Profiling.recordEntry(profiler,
-                Strings.strcat(Strings.strcat(name(probeClass()), "."), probeMethod()));
+    public static void entry(@ProbeMethodName(fqn=true) String probeMethod) {
+        BTraceUtils.Profiling.recordEntry(profiler, probeMethod);
     }
 
     @OnProbe(namespace = "profiler-probes", name = "profiler-exit")
-    public static void exit() {
-        long startTime = unbox(BTraceUtils.Collections.removeFirst(entryTimes));
-        long duration = timeMillis() - startTime;
-        BTraceUtils.Profiling.recordExit(profiler,
-                Strings.strcat(Strings.strcat(name(probeClass()), "."), probeMethod()), duration);
+    public static void exit(@ProbeMethodName(fqn=true) String probeMethod, @Duration long duration) {
+        BTraceUtils.Profiling.recordExit(profiler, probeMethod, duration);
     }
 
     @OnTimer(5000)
