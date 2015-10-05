@@ -231,8 +231,7 @@ def createBtraceAgentJvmArgs() {
     ["-Xshare:off","-Xverify:none","-javaagent:$btraceAgentJar=${btraceAgentOptions.collect { k, v -> "$k=$v".toString()}.join(',')}"]
 }
 
-task printBtraceAgentJvmArgs << {
-    dependsOn(btraceInstall)
+task printBtraceAgentJvmArgs(dependsOn: [btraceInstall, generateProfilerProbeXml]) << {
     println createBtraceAgentJvmArgs().join(" ")
 }
 
