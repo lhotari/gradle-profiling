@@ -15,49 +15,61 @@ sourceSets {
 }
 
 configurations {
-  btraceAgent
-  btraceCompile.extendsFrom(compile)
+    btraceAgent
+    btraceCompile.extendsFrom(compile)
+    btraceCompiler
 }
 
 ext {
-    if(!project.hasProperty("btraceHome")) {
+    if (!project.hasProperty("btraceHome")) {
         btraceHome = System.getenv("BTRACE_HOME") ?: "${System.getProperty('user.home')}/tools/btrace".toString()
     }
 }
 
-if(new File("$btraceHome/build/btrace-boot.jar").exists()) {
+if (new File("$btraceHome/build/btrace-boot.jar").exists()) {
     dependencies {
         // newest btrace version isn't available in maven central or jcenter/bintray
         // download from https://kenai.com/projects/btrace/downloads/directory/releases
         // use BTRACE_HOME environment variable to set home directory
         // https://bintray.com/jbachorik/maven/btrace/view#files has older version
-        compile files("$btraceHome/build/btrace-boot.jar")
+        btraceCompile files("$btraceHome/build/btrace-boot.jar")
         btraceAgent files("$btraceHome/build/btrace-agent.jar")
+        btraceCompiler files("$btraceHome/build/btrace-client.jar", "${System.getenv("JAVA_HOME")}/lib/tools.jar")
     }
 } else {
     repositories { maven { url "http://dl.bintray.com/jbachorik/maven" } }
     dependencies {
-        compile "com.sun.tools.btrace:btrace-boot:latest.integration"
+        btraceCompile "com.sun.tools.btrace:btrace-boot:latest.integration"
         btraceAgent "com.sun.tools.btrace:btrace-agent:latest.integration"
+        btraceCompiler "com.sun.tools.btrace:btrace-client:latest.integration"
+        btraceCompiler files("${System.getenv("JAVA_HOME")}/lib/tools.jar")
     }
 }
 
-task btraceInstall(type: Copy, dependsOn: btraceClasses) {
-    from(compileBtraceJava.outputs.files)
-    into("$buildDir/btrace-scripts")
-    eachFile { details ->
-        details.path = details.name
+task btraceCompile(type: JavaExec, dependsOn: btraceClasses) {
+    def outputDir = new File(buildDir, "btrace-scripts")
+    doFirst {
+        if(!outputDir.exists()) {
+            outputDir.mkdir()
+        }
     }
-    includeEmptyDirs = false
+    classpath = configurations.btraceCompiler
+    main = 'com.sun.btrace.compiler.Compiler'
+    def compileClasspath = configurations.compile.files
+    if (compileClasspath) {
+        args '-cp', compileClasspath.join(':')
+    }
+    args '-d', outputDir
+    args compileBtraceJava.inputs.sourceFiles
 }
 
 task generateProfilerProbeXml << {
     File probesTxt = new File('btrace-probes/profiler-probes.txt')
-    if(probesTxt.exists()) {
+    if (probesTxt.exists()) {
         def probes = []
         probesTxt.eachLine { inputline ->
             def line = inputline.trim()
-            if(line && !line.startsWith("#")) {
+            if (line && !line.startsWith("#")) {
                 probes << line
             }
         }
@@ -145,13 +157,13 @@ private Template createProfilerProbesTemplate() {
 def readEclipseBreakPoints() {
     def probes = []
     File probesEclipseBreakpoints = new File('btrace-probes/legstopwatch-probes.bkpt')
-    if(probesEclipseBreakpoints.exists()) {
+    if (probesEclipseBreakpoints.exists()) {
         def breakpointsRoot = new XmlSlurper().parse(probesEclipseBreakpoints)
         breakpointsRoot.breakpoint.marker.each { marker ->
             def classname = marker.attrib.find { it.@name == 'org.eclipse.jdt.debug.core.typeName' }?.@value?.text()
             def methodname = "/.+/"
             def linenumber = marker.@lineNumber.text()
-            if(classname && linenumber) {
+            if (classname && linenumber) {
                 probes << [classname, methodname, linenumber]
             }
         }
@@ -162,27 +174,27 @@ def readEclipseBreakPoints() {
 task generateLegstopwatchProbeXml << {
     def probes = []
     File probesTxt = new File('btrace-probes/legstopwatch-probes.txt')
-    if(probesTxt.exists()) {
+    if (probesTxt.exists()) {
         probesTxt.eachLine { inputline ->
             def line = inputline.trim()
-            if(line && !line.startsWith("#")) {
+            if (line && !line.startsWith("#")) {
                 def parts = line.split(":")
                 def classname = parts[0]
                 def methodname = parts.size() > 2 ? parts[1] : "/.+/"
                 def linenumber = parts[-1]
-                if(classname && linenumber) {
+                if (classname && linenumber) {
                     probes << [classname, methodname, linenumber]
                 }
             }
         }
     }
     probes.addAll(readEclipseBreakPoints())
-    if(probes) {
+    if (probes) {
         TemplateConfiguration config = new TemplateConfiguration()
         config.autoIndent = true
         config.autoNewLine = true
         config.declarationEncoding = 'UTF-8'
-        MarkupTemplateEngine engine = new MarkupTemplateEngine(config)  
+        MarkupTemplateEngine engine = new MarkupTemplateEngine(config)
         Template xmltemplate = engine.createTemplate('''
  xmlDeclaration()
  "btrace-probes"(namespace:"legstopwatch-probes") {
@@ -203,7 +215,7 @@ task generateLegstopwatchProbeXml << {
             ''')
         new File('btrace-probes/legstopwatch-probes.xml').withWriter('UTF-8') { writer ->
             xmltemplate.make([probes: probes]).writeTo(writer)
-        }  
+        }
     }
 }
 
@@ -216,26 +228,26 @@ task printEclipseBreakpoints << {
 def createBtraceAgentJvmArgs() {
     def btraceAgentJar = configurations.btraceAgent.files.first()
     def debugMode = false
-    if(project.hasProperty("btraceDebug") && project.getProperty("btraceDebug")) {
+    if (project.hasProperty("btraceDebug") && project.getProperty("btraceDebug")) {
         debugMode = true
     }
     // btrace agent options: https://github.com/jbachorik/btrace/wiki#starting-application-with-btrace
     def btraceAgentOptions = [
-        scriptdir: "$buildDir/btrace-scripts",
-        probeDescPath: "${project.file('btrace-probes')}",
-        stdout: true,
-        noServer: true,
-        unsafe: true,
-        debug: debugMode
+            scriptdir    : "$buildDir/btrace-scripts",
+            probeDescPath: "${project.file('btrace-probes')}",
+            stdout       : true,
+            noServer     : true,
+            unsafe       : true,
+            debug        : debugMode
     ]
-    ["-Xshare:off","-Xverify:none","-javaagent:$btraceAgentJar=${btraceAgentOptions.collect { k, v -> "$k=$v".toString()}.join(',')}"]
+    ["-Xshare:off", "-Xverify:none", "-javaagent:$btraceAgentJar=${btraceAgentOptions.collect { k, v -> "$k=$v".toString() }.join(',')}"]
 }
 
-task printBtraceAgentJvmArgs(dependsOn: [btraceInstall, generateProfilerProbeXml]) << {
+task printBtraceAgentJvmArgs(dependsOn: [btraceCompile, generateProfilerProbeXml]) << {
     println createBtraceAgentJvmArgs().join(" ")
 }
 
-if(plugins.hasPlugin("eclipse")) {
+if (plugins.hasPlugin("eclipse")) {
     eclipse {
         classpath {
             plusConfigurations += [configurations.btraceAgent]
@@ -243,7 +255,7 @@ if(plugins.hasPlugin("eclipse")) {
     }
 }
 
-if(plugins.hasPlugin("idea")) {
+if (plugins.hasPlugin("idea")) {
     idea {
         module {
             scopes.PROVIDED.plus += [configurations.btraceAgent]
