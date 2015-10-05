@@ -235,10 +235,11 @@ def createBtraceAgentJvmArgs() {
     def btraceAgentOptions = [
             scriptdir    : "$buildDir/btrace-scripts",
             probeDescPath: "${project.file('btrace-probes')}",
-            stdout       : true,
+            stdout       : false,
             noServer     : true,
             unsafe       : true,
-            debug        : debugMode
+            debug        : debugMode,
+            scriptOutputFile: "${System.getProperty('java.io.tmpdir')}/${rootProject.name}.btrace.out".toString()
     ]
     ["-Xshare:off", "-Xverify:none", "-javaagent:$btraceAgentJar=${btraceAgentOptions.collect { k, v -> "$k=$v".toString() }.join(',')}"]
 }
