@@ -1,12 +1,11 @@
 import com.sun.btrace.AnyType;
 import com.sun.btrace.BTraceUtils;
-import com.sun.btrace.BTraceUtils.*;
+import com.sun.btrace.BTraceUtils.Aggregations;
+import com.sun.btrace.BTraceUtils.Reflective;
 import com.sun.btrace.aggregation.Aggregation;
 import com.sun.btrace.aggregation.AggregationFunction;
 import com.sun.btrace.annotations.*;
 
-import java.util.Collection;
-import java.util.Deque;
 import java.util.Map;
 
 import static com.sun.btrace.BTraceUtils.*;
@@ -20,40 +19,16 @@ public class GradleFileSnapshotterSerializers {
     private static Aggregation inputMax = Aggregations.newAggregation(AggregationFunction.MAXIMUM);
     private static Aggregation inputMin = Aggregations.newAggregation(AggregationFunction.MINIMUM);
     private static Aggregation inputCount = Aggregations.newAggregation(AggregationFunction.COUNT);
-    private static Deque<Aggregation> inputAggregations = BTraceUtils.Collections.newDeque();
-
-    static {
-        addLast(inputAggregations, inputAverage);
-        addLast(inputAggregations, inputMin);
-        addLast(inputAggregations, inputMax);
-        addLast(inputAggregations, inputCount);
-    }
 
     private static Aggregation outputAverage = Aggregations.newAggregation(AggregationFunction.AVERAGE);
     private static Aggregation outputMax = Aggregations.newAggregation(AggregationFunction.MAXIMUM);
     private static Aggregation outputMin = Aggregations.newAggregation(AggregationFunction.MINIMUM);
     private static Aggregation outputCount = Aggregations.newAggregation(AggregationFunction.COUNT);
-    private static Deque<Aggregation> outputAggregations = BTraceUtils.Collections.newDeque();
-
-    static {
-        addLast(outputAggregations, outputAverage);
-        addLast(outputAggregations, outputMin);
-        addLast(outputAggregations, outputMax);
-        addLast(outputAggregations, outputCount);
-    }
 
     private static Aggregation outputFileIdsAverage = Aggregations.newAggregation(AggregationFunction.AVERAGE);
     private static Aggregation outputFileIdsMax = Aggregations.newAggregation(AggregationFunction.MAXIMUM);
     private static Aggregation outputFileIdsMin = Aggregations.newAggregation(AggregationFunction.MINIMUM);
     private static Aggregation outputFileIdsCount = Aggregations.newAggregation(AggregationFunction.COUNT);
-    private static Deque<Aggregation> outputFileIdsAggregations = BTraceUtils.Collections.newDeque();
-
-    static {
-        addLast(outputFileIdsAggregations, outputFileIdsAverage);
-        addLast(outputFileIdsAggregations, outputFileIdsMin);
-        addLast(outputFileIdsAggregations, outputFileIdsMax);
-        addLast(outputFileIdsAggregations, outputFileIdsCount);
-    }
 
     @OnMethod(
             clazz = "org.gradle.api.internal.changedetection.state.DefaultFileSnapshotterSerializer",
@@ -63,12 +38,17 @@ public class GradleFileSnapshotterSerializers {
         Object snapshotImpl = args[1];
         Map<Object, Object> snapshots = (Map<Object, Object>) Reflective.get(Reflective.field(classOf(snapshotImpl), "snapshots"), snapshotImpl);
         int snapshotSize = size(snapshots);
-        Collection<Aggregation> aggregations = outputfiles ? outputAggregations : inputAggregations;
-        Object[] aggregationsArray = BTraceUtils.Collections.toArray(aggregations);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[0], snapshotSize);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[1], snapshotSize);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[2], snapshotSize);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[3], snapshotSize);
+        if(outputfiles) {
+            Aggregations.addToAggregation(outputAverage, snapshotSize);
+            Aggregations.addToAggregation(outputMin, snapshotSize);
+            Aggregations.addToAggregation(outputMax, snapshotSize);
+            Aggregations.addToAggregation(outputCount, snapshotSize);
+        } else {
+            Aggregations.addToAggregation(inputAverage, snapshotSize);
+            Aggregations.addToAggregation(inputMin, snapshotSize);
+            Aggregations.addToAggregation(inputMax, snapshotSize);
+            Aggregations.addToAggregation(inputCount, snapshotSize);
+        }
     }
 
     @OnMethod(
@@ -80,12 +60,10 @@ public class GradleFileSnapshotterSerializers {
         Object snapshotImpl = args[1];
         Map<Object, Object> rootFileIds = (Map<Object, Object>) Reflective.get(Reflective.field(classOf(snapshotImpl), "rootFileIds"), snapshotImpl);
         int rootFileIdsSize = size(rootFileIds);
-        Collection<Aggregation> aggregations = outputFileIdsAggregations;
-        Object[] aggregationsArray = BTraceUtils.Collections.toArray(aggregations);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[0], rootFileIdsSize);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[1], rootFileIdsSize);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[2], rootFileIdsSize);
-        Aggregations.addToAggregation((Aggregation)aggregationsArray[3], rootFileIdsSize);
+        Aggregations.addToAggregation(outputFileIdsAverage, rootFileIdsSize);
+        Aggregations.addToAggregation(outputFileIdsMin, rootFileIdsSize);
+        Aggregations.addToAggregation(outputFileIdsMax, rootFileIdsSize);
+        Aggregations.addToAggregation(outputFileIdsCount, rootFileIdsSize);
     }
 
     @OnMethod(
@@ -98,10 +76,9 @@ public class GradleFileSnapshotterSerializers {
     }
 
     @OnMethod(clazz = "org.gradle.launcher.exec.InProcessBuildActionExecuter$DefaultBuildController",
-            method = "run",
-            location = @Location(Kind.RETURN))
-    public static void reset() {
-        BTraceUtils.println("--------------------------------------------------");
+            method = "run")
+    public static void beforeBuild() {
+        BTraceUtils.println("------------ BEFORE BUILD -------------------------");
         Aggregations.printAggregation("inputs avg", inputAverage);
         Aggregations.printAggregation("inputs min", inputMin);
         Aggregations.printAggregation("inputs max", inputMax);
@@ -118,6 +95,31 @@ public class GradleFileSnapshotterSerializers {
         Aggregations.printAggregation("outputFileIds count", outputFileIdsCount);
 
         BTraceUtils.println("--------------------------------------------------");
+    }
+
+    @OnMethod(clazz = "org.gradle.launcher.exec.InProcessBuildActionExecuter$DefaultBuildController",
+            method = "run",
+            location = @Location(Kind.RETURN))
+    public static void afterBuild() {
+        BTraceUtils.println("------------ AFTER BUILD -------------------------");
+        Aggregations.printAggregation("inputs avg", inputAverage);
+        Aggregations.printAggregation("inputs min", inputMin);
+        Aggregations.printAggregation("inputs max", inputMax);
+        Aggregations.printAggregation("inputs count", inputCount);
+
+        Aggregations.printAggregation("outputs avg", outputAverage);
+        Aggregations.printAggregation("outputs min", outputMin);
+        Aggregations.printAggregation("outputs max", outputMax);
+        Aggregations.printAggregation("outputs count", outputCount);
+
+        Aggregations.printAggregation("outputFileIds avg", outputFileIdsAverage);
+        Aggregations.printAggregation("outputFileIds min", outputFileIdsMin);
+        Aggregations.printAggregation("outputFileIds max", outputFileIdsMax);
+        Aggregations.printAggregation("outputFileIds count", outputFileIdsCount);
+
+        BTraceUtils.println("--------------------------------------------------");
+
+        /*
         Aggregations.clearAggregation(inputAverage);
         Aggregations.clearAggregation(inputMax);
         Aggregations.clearAggregation(inputMin);
@@ -132,5 +134,6 @@ public class GradleFileSnapshotterSerializers {
         Aggregations.clearAggregation(outputFileIdsMax);
         Aggregations.clearAggregation(outputFileIdsMin);
         Aggregations.clearAggregation(outputFileIdsCount);
+        */
     }
 }
