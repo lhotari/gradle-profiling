@@ -102,9 +102,21 @@ public class GradleFileSnapshotterSerializers {
             location = @Location(Kind.RETURN))
     public static void reset() {
         BTraceUtils.println("--------------------------------------------------");
-        Aggregations.printAggregation("inputs", "", inputAggregations);
-        Aggregations.printAggregation("outputs", "", outputAggregations);
-        Aggregations.printAggregation("outputFileIds", "", outputFileIdsAggregations);
+        Aggregations.printAggregation("inputs avg", inputAverage);
+        Aggregations.printAggregation("inputs min", inputMin);
+        Aggregations.printAggregation("inputs max", inputMax);
+        Aggregations.printAggregation("inputs count", inputCount);
+
+        Aggregations.printAggregation("outputs avg", outputAverage);
+        Aggregations.printAggregation("outputs min", outputMin);
+        Aggregations.printAggregation("outputs max", outputMax);
+        Aggregations.printAggregation("outputs count", outputCount);
+
+        Aggregations.printAggregation("outputFileIds avg", outputFileIdsAverage);
+        Aggregations.printAggregation("outputFileIds min", outputFileIdsMin);
+        Aggregations.printAggregation("outputFileIds max", outputFileIdsMax);
+        Aggregations.printAggregation("outputFileIds count", outputFileIdsCount);
+
         BTraceUtils.println("--------------------------------------------------");
         Aggregations.clearAggregation(inputAverage);
         Aggregations.clearAggregation(inputMax);
