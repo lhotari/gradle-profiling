@@ -1,0 +1,113 @@
+/*
+ * Copyright 2015 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+import org.gradle.api.Task
+import org.gradle.api.execution.TaskExecutionListener
+import org.gradle.api.file.DirectoryTree
+import org.gradle.api.internal.file.FileSystemSubset
+import org.gradle.api.internal.file.FileTreeInternal
+import org.gradle.api.internal.file.collections.*
+import org.gradle.api.specs.CompositeSpec
+import org.gradle.api.specs.NotSpec
+import org.gradle.api.specs.Specs
+import org.gradle.api.tasks.TaskState
+import org.gradle.api.tasks.util.PatternSet
+
+// Logs task inputs to build/taskInputs-{date+time}.log file
+// for Gradle 2.9+
+
+def taskInputsLogger = new TaskExecutionListener() {
+    PrintWriter taskInputsLogger = new File(project.buildDir, "taskInputs-${new Date().format('yyyy-MM-dd-HH-mm')}.log").newPrintWriter()
+
+    @Override
+    void beforeExecute(Task task) {
+        DefaultFileCollectionResolveContext context = new DefaultFileCollectionResolveContext();
+        context.add(task.getInputs().getFiles());
+        List<FileTreeInternal> fileTrees = context.resolveAsFileTrees();
+        taskInputsLogger << "Inputs for task ${task.path}" << "\n"
+        for (FileTreeInternal fileTree : fileTrees) {
+            logFileTree(fileTree, 0)
+        }
+        taskInputsLogger << "---------------" << "\n"
+        taskInputsLogger.flush()
+    }
+
+    private logFileTree(Object fileTree, int indentLevel) {
+        String indent = createIndent(indentLevel)
+        if (fileTree instanceof FileTreeAdapter) {
+            logFileTree(fileTree.tree, indentLevel);
+        } else if (fileTree instanceof FilteredFileTree) {
+            taskInputsLogger << indent << "Filter:" << "\n"
+            logPatternSetSpec(fileTree.filter, indentLevel + 1)
+            logFileTree(fileTree.originalFileTree, indentLevel + 1);
+        } else if (fileTree instanceof DirectoryTree) {
+            taskInputsLogger << indent << "Directory: " << fileTree.dir << "\n"
+            taskInputsLogger << indent << "Pattern:" << "\n"
+            logPatterns(fileTree.patterns, indentLevel + 1)
+        } else if (fileTree instanceof SingletonFileTree) {
+            taskInputsLogger << indent << "File: " << fileTree.file << "\n"
+        } else if (fileTree instanceof MinimalFileTree) {
+            def builder = new FileSystemSubset.Builder()
+            fileTree.registerWatchPoints(builder)
+            def subset = builder.build()
+            if (!subset.isEmpty()) {
+                taskInputsLogger << indent << "Filetree: " << subset << "\n"
+            } else {
+                taskInputsLogger << indent << "Filetree: " << fileTree.dump() << "\n"
+            }
+        } else {
+            taskInputsLogger << indent << "Unknown type: " << fileTree.dump() << "\n"
+        }
+    }
+
+    private String createIndent(int indentLevel) {
+        indentLevel > 0 ? "  " * indentLevel : ""
+    }
+
+    private logPatterns(PatternSet patternSet, int indentLevel) {
+        taskInputsLogger << createIndent(indentLevel) << patternSet.dump() << "\n"
+        if (patternSet.hasProperty("other")) {
+            logPatterns(patternSet.other, indentLevel + 1)
+        }
+    }
+
+    private logPatternSetSpec(spec, int indentLevel) {
+        def indent = createIndent(indentLevel)
+        if (spec instanceof CompositeSpec) {
+            taskInputsLogger << indent << spec.getClass().simpleName << ":\n"
+            for (subspec in spec.specs) {
+                logPatternSetSpec(subspec, indentLevel + 1)
+            }
+        } else if (spec instanceof NotSpec) {
+            taskInputsLogger << indent << spec.getClass().simpleName << ":\n"
+            logPatternSetSpec(spec.sourceSpec, indentLevel + 1)
+        } else if (spec.is(Specs.SATISFIES_ALL)) {
+            taskInputsLogger << indent << "satisfy all" << "\n"
+        } else if (spec.is(Specs.SATISFIES_NONE)) {
+            taskInputsLogger << indent << "satisfy none" << "\n"
+        } else {
+            taskInputsLogger << indent << spec.dump() << "\n"
+        }
+    }
+
+    @Override
+    void afterExecute(Task task, TaskState state) {
+
+    }
+}
+
+gradle.addListener(taskInputsLogger)
