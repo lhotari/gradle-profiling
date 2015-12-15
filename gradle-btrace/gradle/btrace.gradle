@@ -253,7 +253,7 @@ task printBtraceAgentJvmArgs(dependsOn: [btraceCompile, generateProfilerProbeXml
 if (plugins.hasPlugin("eclipse")) {
     eclipse {
         classpath {
-            plusConfigurations += [configurations.btraceAgent]
+            plusConfigurations += [configurations.btraceCompile]
         }
     }
 }
@@ -261,7 +261,8 @@ if (plugins.hasPlugin("eclipse")) {
 if (plugins.hasPlugin("idea")) {
     idea {
         module {
-            scopes.PROVIDED.plus += [configurations.btraceAgent]
+            sourceDirs += project.sourceSets.btrace.java.srcDirs
+            scopes.PROVIDED.plus += [configurations.btraceCompile]
         }
     }
 }
