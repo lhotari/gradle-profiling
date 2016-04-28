@@ -1,0 +1,22 @@
+// creates a heap dump of all objects on the heap before the build ends and runs System.gc
+// usage: 
+// copy file to build directory and add this line to build:
+// apply from:'build_dump.gradle'
+import java.lang.management.ManagementFactory
+
+gradle.buildFinished {
+    def hotspotDiagnosticMXBean
+    try {
+        hotspotDiagnosticMXBean = ManagementFactory.getPlatformMXBean(Class.forName("com.sun.management.HotSpotDiagnosticMXBean"))
+    } catch (Exception e) {
+        logger.error("Couldn't locate MBean for doing heap dump.", e)
+    }
+    if (hotspotDiagnosticMXBean) {
+        logger.lifecycle "Creating heap dump..."
+        def dumpDescription = rootProject.name.replaceAll("[^a-zA-Z0-9.-]", "_").replaceAll("[_]+", "_")
+        File dumpFile = new File("heapdump-${dumpDescription}-${new Date().format('yyyy-MM-dd-HH-mm-ss')}.hprof")
+        boolean liveOnly = false
+        hotspotDiagnosticMXBean.dumpHeap(dumpFile.absolutePath, liveOnly)
+        logger.lifecycle "Dumped to ${dumpFile.absolutePath}."
+    }
+}
