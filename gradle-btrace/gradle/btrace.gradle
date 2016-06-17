@@ -48,11 +48,7 @@ if (new File("$btraceHome/build/btrace-boot.jar").exists()) {
 
 task btraceCompile(type: JavaExec, dependsOn: btraceClasses) {
     def outputDir = new File(buildDir, "btrace-scripts")
-    doFirst {
-        if(!outputDir.exists()) {
-            outputDir.mkdir()
-        }
-    }
+    outputs.dir(outputDir)
     classpath = configurations.btraceCompiler
     main = 'com.sun.btrace.compiler.Compiler'
     ignoreExitValue = false
@@ -62,7 +58,8 @@ task btraceCompile(type: JavaExec, dependsOn: btraceClasses) {
     }
     args '-d', outputDir
     args '-unsafe'
-    args compileBtraceJava.inputs.sourceFiles
+    args sourceSets.btrace.java.files
+    inputs.files(sourceSets.btrace.java.srcDirs)
 }
 
 task generateProfilerProbeXml << {
