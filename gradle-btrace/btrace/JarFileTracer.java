@@ -1,6 +1,7 @@
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.jar.JarFile;
 
 import com.sun.btrace.annotations.BTrace;
 import com.sun.btrace.annotations.OnMethod;
@@ -22,8 +23,9 @@ public class JarFileTracer {
 	@OnMethod(
 			clazz = "java.util.jar.JarFile",
 			method = "<init>")
-	public static void onGetInputStream(@Self Object thisObject) {
-		openFiles.put(identityHashCode(thisObject), jstackStr());
+	public static void onOpen(@Self JarFile thisObject) {
+		openFiles.put(identityHashCode(thisObject),
+				"file: " + thisObject.getName() + "\n" + jstackStr());
 	}
 
 	@OnMethod(
@@ -45,8 +47,8 @@ public class JarFileTracer {
 		if (buildRunning.compareAndSet(true, false)) {
 			println("--------------------------------------------------");
 			if (size(openFiles) > 0) {
-				for (String stackTrace : openFiles.values()) {
-					println(stackTrace);
+				for (String sourceInfo : openFiles.values()) {
+					println(sourceInfo);
 					println();
 				}
 			}
