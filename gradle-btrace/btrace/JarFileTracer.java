@@ -21,7 +21,7 @@ public class JarFileTracer {
 	private static AtomicBoolean buildRunning = new AtomicBoolean(false);
 
 	@OnMethod(
-			clazz = "java.util.jar.JarFile",
+			clazz = "+java.util.jar.JarFile",
 			method = "<init>")
 	public static void onOpen(@Self JarFile thisObject) {
 		openFiles.put(identityHashCode(thisObject),
@@ -29,7 +29,7 @@ public class JarFileTracer {
 	}
 
 	@OnMethod(
-			clazz = "java.util.zip.ZipFile",
+			clazz = "+java.util.zip.ZipFile",
 			method = "close")
 	public static void onClose(@Self Object thisObject) {
 		openFiles.remove(identityHashCode(thisObject));
