@@ -29,7 +29,7 @@ public class JarFileTracer {
 	}
 
 	@OnMethod(
-			clazz = "java.util.jar.JarFile",
+			clazz = "java.util.zip.ZipFile",
 			method = "close")
 	public static void onClose(@Self Object thisObject) {
 		openFiles.remove(identityHashCode(thisObject));
