@@ -5,17 +5,17 @@
 
     <event path="java/statistics/thread_allocation">
       <setting name="enabled">true</setting>
-      <setting name="period">10 ms</setting>
+      <setting name="period">everyChunk</setting>
     </event>
 
     <event path="java/statistics/class_loading">
       <setting name="enabled">true</setting>
-      <setting name="period">10 ms</setting>
+      <setting name="period">1000 ms</setting>
     </event>
 
     <event path="java/statistics/threads">
       <setting name="enabled">true</setting>
-      <setting name="period">10 ms</setting>
+      <setting name="period">1000 ms</setting>
     </event>
 
     <event path="java/thread_start">
@@ -115,6 +115,26 @@
       <setting name="period">everyChunk</setting>
     </event>
 
+    <event path="vm/flag/long_changed">
+      <setting name="enabled">true</setting>
+    </event>
+
+    <event path="vm/flag/ulong_changed">
+      <setting name="enabled">true</setting>
+    </event>
+
+    <event path="vm/flag/double_changed">
+      <setting name="enabled">true</setting>
+    </event>
+
+    <event path="vm/flag/boolean_changed">
+      <setting name="enabled">true</setting>
+    </event>
+
+    <event path="vm/flag/string_changed">
+      <setting name="enabled">true</setting>
+    </event>
+
     <event path="vm/gc/detailed/object_count">
       <setting name="enabled">true</setting>
       <setting name="period">everyChunk</setting>
@@ -146,7 +166,7 @@
     </event>
 
     <event path="vm/gc/detailed/object_count_after_gc">
-      <setting name="enabled">false</setting>
+      <setting name="enabled">true</setting>
     </event>
 
     <event path="vm/gc/heap/summary">
@@ -157,7 +177,25 @@
       <setting name="enabled">true</setting>
     </event>
 
-    <event path="vm/gc/heap/perm_gen_summary">
+    <event path="vm/gc/heap/metaspace_summary">
+      <setting name="enabled">true</setting>
+    </event>
+
+    <event path="vm/gc/metaspace/gc_threshold">
+      <setting name="enabled">true</setting>
+    </event>
+
+    <event path="vm/gc/metaspace/allocation_failure">
+      <setting name="enabled">true</setting>
+      <setting name="stackTrace">true</setting>
+    </event>
+
+    <event path="vm/gc/metaspace/out_of_memory">
+      <setting name="enabled">true</setting>
+      <setting name="stackTrace">true</setting>
+    </event>
+
+    <event path="vm/gc/metaspace/chunk_free_list_summary">
       <setting name="enabled">true</setting>
     </event>
 
@@ -202,7 +240,7 @@
     </event>
 
     <event path="vm/gc/phases/pause_level_3">
-      <setting name="enabled">false</setting>
+      <setting name="enabled">true</setting>
       <setting name="threshold">0 ms</setting>
     </event>
 
@@ -226,6 +264,11 @@
       <setting name="enabled">true</setting>
     </event>
 
+    <event path="vm/gc/detailed/allocation_requiring_gc">
+      <setting name="enabled">true</setting>
+      <setting name="stackTrace">true</setting>
+    </event>
+
     <event path="vm/compiler/config">
       <setting name="enabled">true</setting>
       <setting name="period">everyChunk</setting>
@@ -238,12 +281,12 @@
 
     <event path="vm/compiler/compilation">
       <setting name="enabled">true</setting>
-      <setting name="threshold">100 ms</setting>
+      <setting name="threshold">0 ms</setting>
     </event>
 
     <event path="vm/compiler/phase">
       <setting name="enabled">true</setting>
-      <setting name="threshold">10 s</setting>
+      <setting name="threshold">0 s</setting>
     </event>
 
     <event path="vm/compiler/failure">
@@ -261,11 +304,6 @@
     </event>
 
     <event path="vm/code_sweeper/sweep">
-      <setting name="enabled">true</setting>
-      <setting name="threshold">100 ms</setting>
-    </event>
-
-    <event path="vm/code_sweeper/clean">
       <setting name="enabled">true</setting>
       <setting name="threshold">0 ms</setting>
     </event>
@@ -289,14 +327,14 @@
       <setting name="period">everyChunk</setting>
     </event>
 
-    <event path="os/processor/context_switch_rate">
-      <setting name="enabled">true</setting>
-      <setting name="period">10 s</setting>
-    </event>
-
     <event path="os/processor/cpu_information">
       <setting name="enabled">true</setting>
       <setting name="period">everyChunk</setting>
+    </event>
+
+    <event path="os/processor/context_switch_rate">
+      <setting name="enabled">true</setting>
+      <setting name="period">10 s</setting>
     </event>
 
     <event path="os/processor/cpu_load">
@@ -374,7 +412,7 @@
 
     <event path="java/statistics/throwables">
       <setting name="enabled">true</setting>
-      <setting name="period">10 ms</setting>
+      <setting name="period">1000 ms</setting>
     </event>
 
   </producer>
